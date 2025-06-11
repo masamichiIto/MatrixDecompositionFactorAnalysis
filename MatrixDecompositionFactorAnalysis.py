@@ -8,7 +8,7 @@ class MatrixDecompositionFactorAnalysis:
         self.tol = tol
         self.trace = trace
         self.random_state = random_state
-        self.losses = [np.Inf]
+        self.losses = [np.inf]
 
     def _calc_loss(self, Sxx, Lam, Psi):
         loss = np.trace(Sxx - Lam@Lam.T - Psi**2)/np.trace(Sxx)
@@ -80,7 +80,8 @@ class MatrixDecompositionFactorAnalysis:
             Sxx = data
 
         rng = np.random.default_rng(self.random_state)
-        best_loss = np.Inf
+        best_loss = np.inf
+        best_losses = []
         best_Lam = None
         best_Psi = None
 
@@ -101,13 +102,14 @@ class MatrixDecompositionFactorAnalysis:
             n_var = Sxx.shape[0]
             Lam_init = rng.normal(0, 1, size=(n_var, self.ndim))
             Psi_init = np.diag(rng.uniform(0.1, 1.0, size=n_var))
-
+            losses_temp = []
             Lam, Psi = Lam_init, Psi_init
 
             for iter in range(self.max_iter):
                 Sxz = temp_model._Sxz_step(Sxx, Lam, Psi)
                 Lam, Psi = temp_model._B_step(Sxz)
                 loss = temp_model._calc_loss(Sxx, Lam, Psi)
+                losses_temp.append(loss)
                 if self.trace:
                     print("{0}: {1:.4f}".format(iter + 1, loss))
                 if iter > 0 and 0 <= prev_loss - loss <= self.tol:
@@ -118,13 +120,24 @@ class MatrixDecompositionFactorAnalysis:
                 best_loss = loss
                 best_Lam = Lam
                 best_Psi = Psi
+                best_losses = losses_temp
 
         # ベストな結果を self に格納
         self.est_Lam = best_Lam
         self.est_Psi = best_Psi
         self.min_loss = best_loss
-        self.losses = [best_loss]
+        self.losses = best_losses
 
+    def plot_objective(self):
+        if not self.losses:
+            print("fit() を先に実行してください。")
+            return
+        plt.plot(self.losses, marker='o')
+        plt.xlabel("Iteration")
+        plt.ylabel("Objective (Frobenius norm squared)")
+        plt.title("Objective Function Over Iterations")
+        plt.grid(True)
+        plt.show()
 """
 # synthesize data
 Lam = np.array([[0.8,0],
